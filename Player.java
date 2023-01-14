@@ -52,57 +52,57 @@ class Player {
     }
 
     private static void outputForPod1() {
-        System.err.println("nextCheckPointIdMy1: " + nextCheckPointIdMy1);
+            System.err.println("nextCheckPointIdMy1: " + nextCheckPointIdMy1);
         int xNextCp1 = checkPoints[nextCheckPointIdMy1][0];
         int yNextCp1 = checkPoints[nextCheckPointIdMy1][1];
-        System.err.println("xNextCheckPointMy1: " + xNextCp1);
-        System.err.println("yNextCheckPointMy1: " + yNextCp1);
+            System.err.println("xNextCheckPointMy1: " + xNextCp1);
+            System.err.println("yNextCheckPointMy1: " + yNextCp1);
 
         int[] dirToCp1 = new int [2];
         dirToCp1[0] = xNextCp1 - xMy1;
         dirToCp1[1] = yNextCp1 - yMy1;
         double angleToCp1 = angleFromCp(dirToCp1);
-        System.err.println("1st pod oriented: " + angleMy1);
-        System.err.println("1st pod to CP: " + (int) angleToCp1);
+            System.err.println("1st pod oriented: " + angleMy1);
+            System.err.println("1st pod to CP: " + (int) angleToCp1);
         double formerDistToCP1 = dist(xMy1Past, yMy1Past, xNextCp1, yNextCp1);
         int nextCheckpointDist1 = (int) dist(xMy1, yMy1, xNextCp1, yNextCp1);
         int xCorrection1 = (xMy1Past != 0) ? (xMy1 - xMy1Past) : 0;
-        System.err.println("xCorrection1: " + xCorrection1);
+            System.err.println("xCorrection1: " + xCorrection1);
         int yCorrection1 =  (yMy1Past != 0) ? (yMy1 - yMy1Past) : 0;
-        System.err.println("yCorrection1: " + yCorrection1);
+            System.err.println("yCorrection1: " + yCorrection1);
         int xCorrectedGoal1 = xNextCp1 - xCorrection1;
-        System.err.println("xCorrectedGoal1: " + xCorrectedGoal1);
+            System.err.println("xCorrectedGoal1: " + xCorrectedGoal1);
         int yCorrectedGoal1 = yNextCp1 - yCorrection1;
-        System.err.println("yCorrectedGoal1: " + yCorrectedGoal1);
+            System.err.println("yCorrectedGoal1: " + yCorrectedGoal1);
 
         String thrust1 = getThrust(nextCheckpointDist1, angleDifference(angleMy1, angleToCp1), formerDistToCP1);
         System.out.println(xCorrectedGoal1 + " " + yCorrectedGoal1 + " " + thrust1);
-        System.err.println();
+            System.err.println();
     }
 
     private static void outputForPod2() {
-        System.err.println("nextCheckPointIdMy2: " + nextCheckPointIdMy2);
+            System.err.println("nextCheckPointIdMy2: " + nextCheckPointIdMy2);
         int xNextCp2 = checkPoints[nextCheckPointIdMy2][0];
         int yNextCp2 = checkPoints[nextCheckPointIdMy2][1];
-        System.err.println("xNextCheckPointMy2: " + xNextCp2);
-        System.err.println("yNextCheckPointMy2: " + yNextCp2);
+            System.err.println("xNextCheckPointMy2: " + xNextCp2);
+            System.err.println("yNextCheckPointMy2: " + yNextCp2);
 
         int[] dirToCp2 = new int [2];
         dirToCp2[0] = xNextCp2 - xMy2;
         dirToCp2[1] = yNextCp2 - yMy2;
         double angleToCp2 = angleFromCp(dirToCp2);
-        System.err.println("2nd pod oriented: " + angleMy2);
-        System.err.println("2nd pod to CP: " + (int) angleToCp2);
+            System.err.println("2nd pod oriented: " + angleMy2);
+            System.err.println("2nd pod to CP: " + (int) angleToCp2);
         double formerDistToCP2 = dist(xMy2Past, yMy2Past, xNextCp2, yNextCp2);
         int nextCheckpointDist2 = (int) dist(xMy2, yMy2, xNextCp2, yNextCp2);
         int xCorrection2 =  (xMy2Past != 0) ? (xMy2 - xMy2Past) : 0;
-        System.err.println("xCorrection2: " + xCorrection2);
+            System.err.println("xCorrection2: " + xCorrection2);
         int yCorrection2 =  (yMy2Past != 0) ? (yMy2 - yMy2Past) : 0;
-        System.err.println("yCorrection2: " + yCorrection2);
+            System.err.println("yCorrection2: " + yCorrection2);
         int xCorrectedGoal2 = xNextCp2 - xCorrection2;
-        System.err.println("xCorrectedGoal2: " + xCorrectedGoal2);
+            System.err.println("xCorrectedGoal2: " + xCorrectedGoal2);
         int yCorrectedGoal2 = yNextCp2 - yCorrection2;
-        System.err.println("yCorrectedGoal2: " + yCorrectedGoal2);
+            System.err.println("yCorrectedGoal2: " + yCorrectedGoal2);
 
         String thrust2 = getThrust(nextCheckpointDist2, angleDifference(angleMy2, angleToCp2), formerDistToCP2);
         System.out.println(xCorrectedGoal2 + " " + yCorrectedGoal2 + " " + thrust2);
@@ -123,7 +123,7 @@ class Player {
             checkPoints[i][0] = in.nextInt();
             checkPoints[i][1] = in.nextInt();
             System.err.println("checkPoint[" + i + "]: " +
-                    "(" + checkPoints[i][0] + ", " + checkPoints[i][1] + ")");
+                               "(" + checkPoints[i][0] + ", " + checkPoints[i][1] + ")");
         }
         System.err.println();
     }
