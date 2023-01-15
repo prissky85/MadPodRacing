@@ -4,6 +4,7 @@ class Player {
     static int laps;
     static int checkpointCount;
     static int[][] checkPoints;
+    static int[][] apexes;
 
     static int xMy1;                // x position of your pod
     static int yMy1;                // y position of your pod
@@ -53,8 +54,8 @@ class Player {
 
     private static void outputForPod1() {
             System.err.println("nextCheckPointIdMy1: " + nextCheckPointIdMy1);
-        int xNextCp1 = checkPoints[nextCheckPointIdMy1][0];
-        int yNextCp1 = checkPoints[nextCheckPointIdMy1][1];
+        int xNextCp1 = apexes[nextCheckPointIdMy1][0];
+        int yNextCp1 = apexes[nextCheckPointIdMy1][1];
             System.err.println("xNextCheckPointMy1: " + xNextCp1);
             System.err.println("yNextCheckPointMy1: " + yNextCp1);
 
@@ -68,7 +69,7 @@ class Player {
         int nextCheckpointDist1 = (int) dist(xMy1, yMy1, xNextCp1, yNextCp1);
         int xCorrection1 = (xMy1Past != 0) ? (xMy1 - xMy1Past) : 0;
             System.err.println("xCorrection1: " + xCorrection1);
-        int yCorrection1 =  (yMy1Past != 0) ? (yMy1 - yMy1Past) : 0;
+        int yCorrection1 = (yMy1Past != 0) ? (yMy1 - yMy1Past) : 0;
             System.err.println("yCorrection1: " + yCorrection1);
         int xCorrectedGoal1 = xNextCp1 - xCorrection1;
             System.err.println("xCorrectedGoal1: " + xCorrectedGoal1);
@@ -82,8 +83,8 @@ class Player {
 
     private static void outputForPod2() {
             System.err.println("nextCheckPointIdMy2: " + nextCheckPointIdMy2);
-        int xNextCp2 = checkPoints[nextCheckPointIdMy2][0];
-        int yNextCp2 = checkPoints[nextCheckPointIdMy2][1];
+        int xNextCp2 = apexes[nextCheckPointIdMy2][0];
+        int yNextCp2 = apexes[nextCheckPointIdMy2][1];
             System.err.println("xNextCheckPointMy2: " + xNextCp2);
             System.err.println("yNextCheckPointMy2: " + yNextCp2);
 
@@ -119,13 +120,84 @@ class Player {
         laps = in.nextInt();
         checkpointCount = in.nextInt();
         checkPoints = new int[checkpointCount][2];
+        apexes = new int[checkpointCount][2];
         for (int i = 0; i < checkpointCount; i++) {
             checkPoints[i][0] = in.nextInt();
             checkPoints[i][1] = in.nextInt();
             System.err.println("checkPoint[" + i + "]: " +
                                "(" + checkPoints[i][0] + ", " + checkPoints[i][1] + ")");
         }
+        computeApexes();
         System.err.println();
+    }
+
+    public static void computeApexes() {
+        int xPrevious = checkPoints[checkpointCount - 1][0];
+        int yPrevious = checkPoints[checkpointCount - 1][1];
+        int xCp = checkPoints[0][0];
+        int yCp = checkPoints[0][1];
+        int xNext = checkPoints[1][0];
+        int yNext = checkPoints[1][1];
+        double [] apexFromCpRadius = apexFromCp(xPrevious, xCp, xNext, yPrevious, yCp, yNext);
+        // apex for CP 0:
+        apexes[0][0] = (int) (checkPoints[0][0] + apexFromCpRadius[0]);
+        apexes[0][1] = (int) (checkPoints[0][1] + apexFromCpRadius[1]);
+
+        for (int i = 1; i < checkpointCount - 1; i++) {
+            // apex for CP i:
+            xPrevious = checkPoints[i - 1][0];
+            yPrevious = checkPoints[i - 1][1];
+            xCp = checkPoints[i][0];
+            yCp = checkPoints[i][1];
+            xNext = checkPoints[i + 1][0];
+            yNext = checkPoints[i + 1][1];
+            apexFromCpRadius = apexFromCp(xPrevious, xCp, xNext, yPrevious, yCp, yNext);
+            apexes[i][0] = (int) (checkPoints[i][0] + apexFromCpRadius[0]);
+            apexes[i][1] = (int) (checkPoints[i][1] + apexFromCpRadius[1]);
+        }
+
+        // apex for CP checkpointCount-1:
+        xPrevious = checkPoints[checkpointCount - 2][0];
+        yPrevious = checkPoints[checkpointCount - 2][1];
+        xCp = checkPoints[checkpointCount - 1][0];
+        yCp = checkPoints[checkpointCount - 1][1];
+        xNext = checkPoints[0][0];
+        yNext = checkPoints[0][1];
+        apexFromCpRadius = apexFromCp(xPrevious, xCp, xNext, yPrevious, yCp, yNext);
+        apexes[checkpointCount - 1][0] = (int) (checkPoints[checkpointCount - 1][0] + apexFromCpRadius[0]);
+        apexes[checkpointCount - 1][1] = (int) (checkPoints[checkpointCount - 1][1] + apexFromCpRadius[1]);
+    }
+
+    private static double[] apexFromCp(int xPrevious, int xCp, int xNext, int yPrevious, int yCp, int yNext) {
+        double [] nextDirection = new double [2];
+        double [] previousDirection = new double [2];
+        double [] apexDirection = new double [2];
+
+        nextDirection[0] = xNext - xCp;
+        nextDirection[1] = yNext - yCp;
+        nextDirection = normalizeVector(nextDirection, 1);
+
+        previousDirection[0] = xPrevious - xCp;
+        previousDirection[1] = yPrevious - yCp;
+        previousDirection = normalizeVector(previousDirection, 1);
+
+        apexDirection[0] = previousDirection[0] + nextDirection[0];
+        apexDirection[1] = previousDirection[1] + nextDirection[1];
+        apexDirection = normalizeVector(apexDirection, 590);
+
+        return apexDirection;
+    }
+
+    private static double vectorLength(double [] direction) {
+        return Math.sqrt(direction[0] * direction[0] + direction[1] * direction[1]);
+    }
+
+    private static double[] normalizeVector(double[] vector, int length) {
+        double [] normalized = new double [2];
+        double norm = vectorLength(vector);
+        normalized[0] = vector[0] / norm * length;
+        normalized[1] = vector[1] / norm * length;
+        return normalized;
     }
 
     private static void readInputs(Scanner in) {
@@ -185,7 +257,7 @@ class Player {
     }
 
     public static String getThrust(int nextCheckpointDist, double nextCheckpointAngle, double formerGoalDist) {
-        String thrust = "100";
+        String thrust = "BOOST";
         System.err.println("nextCheckpointDist: " + nextCheckpointDist);
         System.err.println("angle difference: " + (int) nextCheckpointAngle);
         System.err.println("formerGoalDist: " + (int) formerGoalDist);
