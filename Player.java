@@ -6,9 +6,12 @@ class Player {
     static int[][] checkPoints;
     static int[] apexForPod1;
     static int[] apexForPod2;
-    static double[][] variables; // [my1, my2, his1, his2][0:x, 1:y, 2:vx, 3:vy, 4:angle, 5:nextCpId, 6:pastX, 7:pastY]
-    static double[][] myFuture;  // predicted position of my pods
-    static double[][] hisFuture; // predicted position of opponent's pods
+    static double[][] variables;     // [my1, my2, his1, his2][0:x, 1:y, 2:vx, 3:vy, 4:angle, 5:nextCpId]
+    static double[][] pastVariables; // [my1, my2, his1, his2][0:x, 1:y, 2:vx, 3:vy, 4:angle, 5:nextCpId]
+    static double[][] myFuture;      // predicted position of my pods
+    static double[][] hisFuture;     // predicted position of opponent's pods
+    static String[] cp2go;           // remaining CPs for each pod
+    static int leaderIdx;
 
     public static void main(String args[]) {
         Scanner in = new Scanner(System.in);
@@ -17,13 +20,15 @@ class Player {
         while (true) {
             readInputs(in);
             updateVariables();
-            outputForPod1();
-            outputForPod2();
-            updatePastValues();
+            outputForPod1();        // attack
+            outputForPod2();        // race
+            updatePastVariables();
         }
     }
 
     public static void updateVariables() {
+        updateOpponentsProgress();
+
         apexForPod1 = computeApex((int) variables[0][0], (int) variables[0][1], (int) variables[0][5]);
         apexForPod2 = computeApex((int) variables[1][0], (int) variables[1][1], (int) variables[1][5]);
 
@@ -36,6 +41,22 @@ class Player {
         hisFuture[0][1] = variables[2][1] + variables[2][3]; // his 2nd y
         hisFuture[1][0] = variables[3][0] + variables[3][2]; // his 1st x
         hisFuture[1][1] = variables[3][1] + variables[3][3]; // his 2nd y
+    }
+
+    private static void updateOpponentsProgress() {
+        for (int i = 0; i < 4; i++) {
+            if ((int) variables[i][5] != Integer.parseInt(Character.toString(cp2go[i].charAt(0)))) {
+                cp2go[i] = cp2go[i].substring(1);
+            }
+            System.err.println("cp2go[" + i + "]: " + cp2go[i]);
+        }
+        if (cp2go[2].length() < cp2go[3].length()) {
+            leaderIdx = 2;
+        }
+        if (cp2go[2].length() > cp2go[3].length()) {
+            leaderIdx = 3;
+        }
+        System.err.println("Opponent's leader: pod #" + (leaderIdx - 1));
     }
 
     private static void outputForPod1() {
@@ -51,11 +72,11 @@ class Player {
         double angleToCp1 = angleFromCp(dirToCp1);
         System.err.println("1st pod oriented: " + variables[0][4]);
         System.err.println("1st pod to CP: " + (int) angleToCp1);
-        double formerDistToCP1 = distance(variables[0][6], variables[0][7], xNextCp1, yNextCp1);
+        double formerDistToCP1 = distance(pastVariables[0][0], pastVariables[0][1], xNextCp1, yNextCp1);
         double nextCheckpointDist1 = distance(variables[0][0], variables[0][1], xNextCp1, yNextCp1);
-        double xCorrection1 = (variables[0][6] != 0) ? (variables[0][0] - variables[0][6]) : 0;
+        double xCorrection1 = (pastVariables[0][0] != 0) ? (variables[0][0] - pastVariables[0][0]) : 0;
         System.err.println("xCorrection1: " + xCorrection1);
-        double yCorrection1 = (variables[0][7] != 0) ? (variables[0][1] - variables[0][7]) : 0;
+        double yCorrection1 = (pastVariables[0][1] != 0) ? (variables[0][1] - pastVariables[0][1]) : 0;
         System.err.println("yCorrection1: " + yCorrection1);
         double xCorrectedGoal1 = xNextCp1 - xCorrection1;
         System.err.println("xCorrectedGoal1: " + xCorrectedGoal1);
@@ -81,11 +102,11 @@ class Player {
         double angleToCp2 = angleFromCp(dirToCp2);
         System.err.println("2nd pod oriented: " + variables[1][4]);
         System.err.println("2nd pod to CP: " + (int) angleToCp2);
-        double formerDistToCP2 = distance(variables[1][6], variables[1][7], xNextCp2, yNextCp2);
+        double formerDistToCP2 = distance(pastVariables[1][0], pastVariables[1][1], xNextCp2, yNextCp2);
         int nextCheckpointDist2 = (int) distance(variables[1][0], variables[1][1], xNextCp2, yNextCp2);
-        double xCorrection2 =  (variables[1][6] != 0) ? (variables[1][0] - variables[1][6]) : 0;
+        double xCorrection2 =  (pastVariables[1][0] != 0) ? (variables[1][0] - pastVariables[1][0]) : 0;
         System.err.println("xCorrection2: " + xCorrection2);
-        double yCorrection2 =  (variables[1][7] != 0) ? (variables[1][1] - variables[1][7]) : 0;
+        double yCorrection2 =  (pastVariables[1][1] != 0) ? (variables[1][1] - pastVariables[1][1]) : 0;
         System.err.println("yCorrection2: " + yCorrection2);
         double xCorrectedGoal2 = xNextCp2 - xCorrection2;
         System.err.println("xCorrectedGoal2: " + xCorrectedGoal2);
@@ -97,11 +118,8 @@ class Player {
         System.out.println((int) xCorrectedGoal2 + " " + (int) yCorrectedGoal2 + " " + thrust2);
     }
 
-    private static void updatePastValues() {
-        variables[0][6] = variables[0][0];
-        variables[0][7] = variables[0][1];
-        variables[1][6] = variables[1][0];
-        variables[1][7] = variables[1][1];
+    private static void updatePastVariables() {
+        pastVariables = variables;
     }
 
     private static void readInitialInputs(Scanner in) {
@@ -110,7 +128,8 @@ class Player {
         checkPoints = new int[checkpointCount][2];
         apexForPod1 = new int[2];
         apexForPod2 = new int[2];
-        variables = new double[4][8];
+        variables = new double[4][6];
+        pastVariables = new double[4][6];
         myFuture = new double[2][2];
         hisFuture = new double[2][2];
         for (int i = 0; i < checkpointCount; i++) {
@@ -121,7 +140,25 @@ class Player {
         }
         apexForPod1 = computeApex(checkPoints[checkpointCount - 1][0], checkPoints[checkpointCount - 1][1], 0);
         apexForPod2 = computeApex(checkPoints[checkpointCount - 1][0], checkPoints[checkpointCount - 1][1], 0);
+        cp2go = cp2go();
         System.err.println();
+    }
+
+    public static String[] cp2go() {
+        StringBuilder raceBuilder = new StringBuilder();
+        for (int l = 1; l <= laps; l++) {
+            for (int cp = 1; cp < checkpointCount; cp++) {
+                raceBuilder.append(cp);
+            }
+            raceBuilder.append("0");
+        }
+        String race = raceBuilder.toString();
+        System.err.println(race);
+        String[] cp2go = new String[4];
+        for (int i = 0; i < 4; i++) {
+            cp2go[i] = race;
+        }
+        return cp2go;
     }
 
     public static int[] computeApex(int myX, int myY, int nextCpId) {
