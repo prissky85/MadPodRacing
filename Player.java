@@ -13,7 +13,11 @@ class Player {
     static String[] cp2go;           // remaining CPs for each pod
     static int leaderIdx;
     static boolean firstCpReached;
-    static int[] target;
+    static int[] pushCourse;
+    static int[] crashCourse;
+    static int[] nextButOneCp;
+    static int opponentCpIdx;
+    static int opponentSecondCpIdx;
 
     public static void main(String args[]) {
         Scanner in = new Scanner(System.in);
@@ -71,20 +75,47 @@ class Player {
     }
 
     private static void updateTarget() {
-        int cpIdx = Integer.parseInt(Character.toString(cp2go[leaderIdx].charAt(0)));
-        target[0] = (checkPoints[cpIdx][0] + (int) ((hisFuture[leaderIdx - 2][0] - checkPoints[cpIdx][0]) / Math.PI));
-        target[1] = (checkPoints[cpIdx][1] + (int) ((hisFuture[leaderIdx - 2][1] - checkPoints[cpIdx][1]) / Math.PI));
+        opponentCpIdx = Integer.parseInt(Character.toString(cp2go[leaderIdx].charAt(0)));
+        if (cp2go[leaderIdx].length() > 1) {
+            opponentSecondCpIdx = Integer.parseInt(Character.toString(cp2go[leaderIdx].charAt(1)));
+        } else {
+            opponentSecondCpIdx = opponentCpIdx;
+        }
+
+        pushCourse[0] = (checkPoints[opponentCpIdx][0] + (int) ((hisFuture[leaderIdx - 2][0] - checkPoints[opponentCpIdx][0]) / Math.PI));
+        pushCourse[1] = (checkPoints[opponentCpIdx][1] + (int) ((hisFuture[leaderIdx - 2][1] - checkPoints[opponentCpIdx][1]) / Math.PI));
+
+        crashCourse[0] = (int) (hisFuture[leaderIdx - 2][0] + ((checkPoints[opponentCpIdx][0] - hisFuture[leaderIdx - 2][0]) / 2));
+        crashCourse[1] = (int) (hisFuture[leaderIdx - 2][1] + ((checkPoints[opponentCpIdx][1] - hisFuture[leaderIdx - 2][1]) / 2));
+
+        nextButOneCp[0] = checkPoints[opponentSecondCpIdx][0];
+        nextButOneCp[1] = checkPoints[opponentSecondCpIdx][1];
     }
 
     private static void outputForPod1() {
         if (!firstCpReached) { // until opponent reaches the first CP, head to the 2nd CP
-            System.out.println(target[0] + " " + target[1] + " 42");
+            System.out.println(checkPoints[2][0] + " " + checkPoints[2][1] + " 42");
         } else {
             String thrust = " 100";
             if (intercourse(0)) {
                 thrust = " SHIELD";
             }
-            System.out.println(target[0] + " " + target[1] + thrust);
+            double hisDistanceToCp = distance(checkPoints[opponentCpIdx][0], checkPoints[opponentCpIdx][1],
+                                              hisFuture[leaderIdx - 2][0], hisFuture[leaderIdx - 2][1]);
+            double myDistanceToHim = distance(hisFuture[leaderIdx - 2][0], hisFuture[leaderIdx - 2][1],
+                                              variables[1][0], variables[1][1]);
+            double myDistanceToHisCp = distance(variables[1][0], variables[1][1],
+                                                checkPoints[opponentCpIdx][0], checkPoints[opponentCpIdx][1]);
+            if (hisDistanceToCp > 1500 ||
+                myDistanceToHim < 1000) {
+                if (myDistanceToHisCp > myDistanceToHim) {
+                    System.out.println(pushCourse[0] + " " + pushCourse[1] + thrust);
+                } else {
+                    System.out.println(crashCourse[0] + " " + crashCourse[1] + thrust);
+                }
+            } else {
+                System.out.println(nextButOneCp[0] + " " + nextButOneCp[1] + " 25");
+            }
         }
     }
 
@@ -141,9 +172,11 @@ class Player {
         apexForPod2 = computeApex(checkPoints[checkpointCount - 1][0], checkPoints[checkpointCount - 1][1], 0);
         cp2go = cp2go();
         leaderIdx = 2;
-        target = new int[2];
-        target[0] = checkPoints[2][0];
-        target[1] = checkPoints[2][1];
+        pushCourse = new int[2];
+        crashCourse = new int[2];
+        nextButOneCp = new int[2];
+        pushCourse[0] = checkPoints[2][0];
+        pushCourse[1] = checkPoints[2][1];
         System.err.println();
     }
 
