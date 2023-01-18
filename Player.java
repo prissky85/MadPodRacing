@@ -6,10 +6,9 @@ class Player {
     static int[][] checkPoints;
     static int[] apexForPod1;
     static int[] apexForPod2;
-    static double[][] variables;     // [my1, my2, his1, his2][0:x, 1:y, 2:vx, 3:vy, 4:angle, 5:nextCpId]
-    static double[][] pastVariables; // [my1, my2, his1, his2][0:x, 1:y, 2:vx, 3:vy, 4:angle, 5:nextCpId]
-    static double[][] myFuture;      // predicted position of my pods
-    static double[][] hisFuture;     // predicted position of opponent's pods
+    static double[][] variables;       // [my1, my2, his1, his2][0:x, 1:y, 2:vx, 3:vy, 4:angle, 5:nextCpId]
+    static double[][] pastVariables;   // [my1, my2, his1, his2][0:x, 1:y, 2:vx, 3:vy, 4:angle, 5:nextCpId]
+    static double[][] futureVariables; // [my1, my2, his1, his2][0:x, 1:y]]
     static String[] cp2go;           // remaining CPs for each pod
     static int leaderIdx;
     static boolean firstCpReached;
@@ -33,8 +32,8 @@ class Player {
     }
 
     public static void updateVariables() {
-        System.err.println("His1Future error: " + distance(hisFuture[0][0], hisFuture[0][1], variables[2][0], variables[2][1]));
-        System.err.println("His2Future error: " + distance(hisFuture[1][0], hisFuture[1][1], variables[3][0], variables[3][1]));
+        System.err.println("His1Future error: " + distance(futureVariables[2][0], futureVariables[2][1], variables[2][0], variables[2][1]));
+        System.err.println("His2Future error: " + distance(futureVariables[3][0], futureVariables[3][1], variables[3][0], variables[3][1]));
 
         updateOpponentsProgress();
 
@@ -46,14 +45,14 @@ class Player {
         double[] myDirection2 = angle2vector(variables[1][4]);
         double[] hisDirection1 = angle2vector(variables[2][4]);
         double[] hisDirection2 = angle2vector(variables[3][4]);
-        myFuture[0][0]  = variables[0][0] + variables[0][2] + 100 * myDirection1[0];  // my 1st x
-        myFuture[0][1]  = variables[0][1] + variables[0][3] + 100 * myDirection1[1];  // my 1st y
-        myFuture[1][0]  = variables[1][0] + variables[1][2] + 100 * myDirection2[0];  // my 2nd x
-        myFuture[1][1]  = variables[1][1] + variables[1][3] + 100 * myDirection2[1];  // my 2nd y
-        hisFuture[0][0] = variables[2][0] + variables[2][2] + 100 * hisDirection1[0]; // his 1st x
-        hisFuture[0][1] = variables[2][1] + variables[2][3] + 100 * hisDirection1[1]; // his 2nd y
-        hisFuture[1][0] = variables[3][0] + variables[3][2] + 100 * hisDirection2[0]; // his 1st x
-        hisFuture[1][1] = variables[3][1] + variables[3][3] + 100 * hisDirection2[1]; // his 2nd y
+        futureVariables[0][0]  = variables[0][0] + variables[0][2] + 100 * myDirection1[0];  // my 1st x
+        futureVariables[0][1]  = variables[0][1] + variables[0][3] + 100 * myDirection1[1];  // my 1st y
+        futureVariables[1][0]  = variables[1][0] + variables[1][2] + 100 * myDirection2[0];  // my 2nd x
+        futureVariables[1][1]  = variables[1][1] + variables[1][3] + 100 * myDirection2[1];  // my 2nd y
+        futureVariables[2][0]  = variables[2][0] + variables[2][2] + 100 * hisDirection1[0]; // his 1st x
+        futureVariables[2][1]  = variables[2][1] + variables[2][3] + 100 * hisDirection1[1]; // his 2nd y
+        futureVariables[3][0]  = variables[3][0] + variables[3][2] + 100 * hisDirection2[0]; // his 1st x
+        futureVariables[3][1]  = variables[3][1] + variables[3][3] + 100 * hisDirection2[1]; // his 2nd y
     }
 
     private static void updateOpponentsProgress() {
@@ -82,11 +81,11 @@ class Player {
             opponentSecondCpIdx = opponentCpIdx;
         }
 
-        pushCourse[0] = (checkPoints[opponentCpIdx][0] + (int) ((hisFuture[leaderIdx - 2][0] - checkPoints[opponentCpIdx][0]) / Math.PI));
-        pushCourse[1] = (checkPoints[opponentCpIdx][1] + (int) ((hisFuture[leaderIdx - 2][1] - checkPoints[opponentCpIdx][1]) / Math.PI));
+        pushCourse[0] = (checkPoints[opponentCpIdx][0] + (int) ((futureVariables[leaderIdx][0] - checkPoints[opponentCpIdx][0]) / Math.PI));
+        pushCourse[1] = (checkPoints[opponentCpIdx][1] + (int) ((futureVariables[leaderIdx][1] - checkPoints[opponentCpIdx][1]) / Math.PI));
 
-        crashCourse[0] = (int) (hisFuture[leaderIdx - 2][0] + ((checkPoints[opponentCpIdx][0] - hisFuture[leaderIdx - 2][0]) / 2));
-        crashCourse[1] = (int) (hisFuture[leaderIdx - 2][1] + ((checkPoints[opponentCpIdx][1] - hisFuture[leaderIdx - 2][1]) / 2));
+        crashCourse[0] = (int) (futureVariables[leaderIdx][0] + ((checkPoints[opponentCpIdx][0] - futureVariables[leaderIdx][0]) / 2));
+        crashCourse[1] = (int) (futureVariables[leaderIdx][1] + ((checkPoints[opponentCpIdx][1] - futureVariables[leaderIdx][1]) / 2));
 
         nextButOneCp[0] = checkPoints[opponentSecondCpIdx][0];
         nextButOneCp[1] = checkPoints[opponentSecondCpIdx][1];
@@ -100,22 +99,59 @@ class Player {
             if (intercourse(0)) {
                 thrust = " SHIELD";
             }
+
+            System.err.println();
+            System.err.println("opponentCpIdx: " + opponentCpIdx);
+            System.err.println("leaderIdx: " + (leaderIdx - 1));
+
+
+            int[] dirToCp = new int[2];
+            dirToCp[0] = (int) (checkPoints[opponentCpIdx][0] - pastVariables[0][0]);
+            dirToCp[1] = (int) (checkPoints[opponentCpIdx][1] - pastVariables[0][1]);
+            int[] dirToLeader = new int[2];
+            dirToLeader[0] = (int) (variables[leaderIdx][0] - pastVariables[0][0]);
+            dirToLeader[1] = (int) (variables[leaderIdx][1] - pastVariables[0][1]);
+
+            System.err.println("dirToCp[0]: " + dirToCp[0]);
+            System.err.println("dirToCp[1]: " + dirToCp[1]);
+            System.err.println("dirToLeader[0]: " + dirToLeader[0]);
+            System.err.println("dirToLeader[1]: " + dirToLeader[1]);
+            System.err.println();
+
+            double alpha = angleDifference(vector2angle(dirToCp), vector2angle(dirToLeader));
+
+            // TODO: could hisDistanceToCp be used to improve attack?
             double hisDistanceToCp = distance(checkPoints[opponentCpIdx][0], checkPoints[opponentCpIdx][1],
-                                              hisFuture[leaderIdx - 2][0], hisFuture[leaderIdx - 2][1]);
-            double myDistanceToHim = distance(hisFuture[leaderIdx - 2][0], hisFuture[leaderIdx - 2][1],
-                                              variables[1][0], variables[1][1]);
-            double myDistanceToHisCp = distance(variables[1][0], variables[1][1],
+                                              futureVariables[leaderIdx][0], futureVariables[leaderIdx][1]);
+            double myDistanceToHim = distance(futureVariables[leaderIdx][0], futureVariables[leaderIdx][1],
+                                              variables[0][0], variables[0][1]);
+            double myDistanceToHisCp = distance(variables[0][0], variables[0][1],
                                                 checkPoints[opponentCpIdx][0], checkPoints[opponentCpIdx][1]);
-            if (hisDistanceToCp > 1500 ||
-                myDistanceToHim < 1000) {
-                if (myDistanceToHisCp > myDistanceToHim) {
-                    System.out.println(pushCourse[0] + " " + pushCourse[1] + thrust);
-                } else {
-                    System.out.println(crashCourse[0] + " " + crashCourse[1] + thrust);
-                }
+
+            System.err.println("myDistanceToHisCp: " + myDistanceToHisCp);
+            System.err.println("myDistanceToHim: " + myDistanceToHim);
+            System.err.println();
+
+            int x;
+            int y;
+            if (alpha > 60) {
+                x = pushCourse[0];
+                y = pushCourse[1];
+            } else if (alpha > 30) {
+                x = pushCourse[0];
+                y = pushCourse[1];
             } else {
-                System.out.println(nextButOneCp[0] + " " + nextButOneCp[1] + " 25");
+                if (myDistanceToHisCp > myDistanceToHim) {
+                    x = nextButOneCp[0];
+                    y = nextButOneCp[1];
+                    thrust = " 25";
+                } else {
+                    x = crashCourse[0];
+                    y = crashCourse[1];
+                }
             }
+            String msg = " alpha:" + (int) alpha + ", x: " + x + ", y: " + y + ", thrust: " + thrust;
+            System.out.println(x + " " + y + thrust + msg);
         }
     }
 
@@ -160,8 +196,7 @@ class Player {
         apexForPod2 = new int[2];
         variables = new double[4][6];
         pastVariables = new double[4][6];
-        myFuture = new double[2][2];
-        hisFuture = new double[2][2];
+        futureVariables = new double[4][2];
         for (int i = 0; i < checkpointCount; i++) {
             checkPoints[i][0] = in.nextInt();
             checkPoints[i][1] = in.nextInt();
@@ -351,11 +386,11 @@ class Player {
     }
 
     private static boolean intercourse(int podIdx) {
-        if (distance(myFuture[podIdx][0], myFuture[podIdx][1], hisFuture[0][0], hisFuture[0][1]) < 800) {
+        if (distance(futureVariables[podIdx][0], futureVariables[podIdx][1], futureVariables[2][0], futureVariables[2][1]) < 800) {
             System.err.println("Collision of pods my#" + (podIdx + 1) + " and his#1 predicted!");
             return true;
         }
-        if (distance(myFuture[podIdx][0], myFuture[podIdx][1], hisFuture[1][0], hisFuture[1][1]) < 800) {
+        if (distance(futureVariables[podIdx][0], futureVariables[podIdx][1], futureVariables[3][0], futureVariables[3][1]) < 800) {
             System.err.println("Collision of pods my#" + (podIdx + 1) + " and his#2 predicted!");
             return true;
         }
