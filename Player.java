@@ -4,12 +4,7 @@ class Player {
     static int laps;
     static int checkpointCount;
     static int[][] checkPoints;
-    static int[] apexForPod1;
-    static int[] apexForPod2;
-    static double[][] variables;       // [my1, my2, his1, his2][0:x, 1:y, 2:vx, 3:vy, 4:angle, 5:nextCpId]
-    static double[][] pastVariables;   // [my1, my2, his1, his2][0:x, 1:y, 2:vx, 3:vy, 4:angle, 5:nextCpId]
-    static double[][] futureVariables; // [my1, my2, his1, his2][0:x, 1:y]]
-    static String[] cp2go;           // remaining CPs for each pod
+    static String[] cp2go;             // remaining CPs for each pod
     static int leaderIdx;
     static boolean firstCpReached;
     static int[] pushCourse;
@@ -17,48 +12,106 @@ class Player {
     static int[] nextButOneCp;
     static int opponentCpIdx;
     static int opponentSecondCpIdx;
+    static int furthestCpId;
+
+    static Pod[] pods;
+    static Pod my1;
+    static Pod my2;
+    static Pod his1;
+    static Pod his2;
+
+    static class Pod {
+        String name;
+        String cp2go;
+        double nextCpId;
+        State state;
+        State stateFormer;
+        State stateFuture;
+
+        public Pod(String name) {
+            this.name = name;
+            this.cp2go = "";
+            this.nextCpId = 0;
+            this.state = new State();
+            this.stateFormer = new State();
+            this.stateFuture = new State();
+        }
+
+        public void updateState(Scanner in) {
+            this.state = new State();
+            this.state.xy[0] = in.nextInt();     // x position of your pod
+            this.state.xy[1] = in.nextInt();     // y position of your pod
+                System.err.println(this.name + " - future error: " +
+                                   distance(this.stateFuture.xy[0], this.stateFuture.xy[1], this.state.xy[0], this.state.xy[1]));
+            this.state.v[0] = in.nextInt();      // x speed of your pod
+            this.state.v[1] = in.nextInt();      // y speed of your pod
+            this.state.angle = in.nextInt();     // angle of your pod
+            this.state.nextCpIdx = in.nextInt(); // next check point id of your pod
+            this.state.apex = computeApex(this.state.xy[0], this.state.xy[1], this.state.nextCpIdx);
+            this.state.direction = angle2vector(this.state.angle);
+
+            // future =: position + speed + 250 * angle
+            this.stateFuture.xy[0] = (int) (this.state.xy[0] + this.state.v[0] + 100 * this.state.direction[0]);
+            this.stateFuture.xy[1] = (int) (this.state.xy[1] + this.state.v[1] + 100 * this.state.direction[1]);
+        }
+
+        public void updateFormerState(State state) {
+            this.stateFormer = new State(state);
+        }
+    }
+
+    static class State {
+        int[] xy;
+        int[] v;
+        int[] apex;
+        double angle;
+        int nextCpIdx;
+        double[] direction;
+
+        public State() {
+            this.xy = new int[2];
+            this.v = new int[2];
+            this.apex = new int[2];
+            this.angle = 0;
+            this.direction = new double[2];
+        }
+
+        public State(State state) {
+            this.xy = new int[]{state.xy[0], state.xy[1]};
+            this.v = new int[]{state.v[0], state.v[1]};
+            this.apex = new int[2];
+            this.angle = state.angle;
+            this.nextCpIdx = state.nextCpIdx;
+            this.direction = state.direction;
+        }
+    }
 
     public static void main(String args[]) {
         Scanner in = new Scanner(System.in);
+        initializeRace();
         readInitialInputs(in);
 
         while (true) {
             readInputs(in);
-            updateVariables();
-            outputForPod1();        // attack
-            outputForPod2();        // race
-            updatePastVariables();
+            updateOpponentsProgress();
+            outputForPod1();            // attack
+            outputForPod2();            // race
+            updateFormerVariables();
         }
     }
 
-    public static void updateVariables() {
-        System.err.println("His1Future error: " + distance(futureVariables[2][0], futureVariables[2][1], variables[2][0], variables[2][1]));
-        System.err.println("His2Future error: " + distance(futureVariables[3][0], futureVariables[3][1], variables[3][0], variables[3][1]));
-
-        updateOpponentsProgress();
-
-        apexForPod1 = computeApex((int) variables[0][0], (int) variables[0][1], (int) variables[0][5]);
-        apexForPod2 = computeApex((int) variables[1][0], (int) variables[1][1], (int) variables[1][5]);
-
-        // future =: position + speed + 250 * angle
-        double[] myDirection1 = angle2vector(variables[0][4]);
-        double[] myDirection2 = angle2vector(variables[1][4]);
-        double[] hisDirection1 = angle2vector(variables[2][4]);
-        double[] hisDirection2 = angle2vector(variables[3][4]);
-        futureVariables[0][0]  = variables[0][0] + variables[0][2] + 100 * myDirection1[0];  // my 1st x
-        futureVariables[0][1]  = variables[0][1] + variables[0][3] + 100 * myDirection1[1];  // my 1st y
-        futureVariables[1][0]  = variables[1][0] + variables[1][2] + 100 * myDirection2[0];  // my 2nd x
-        futureVariables[1][1]  = variables[1][1] + variables[1][3] + 100 * myDirection2[1];  // my 2nd y
-        futureVariables[2][0]  = variables[2][0] + variables[2][2] + 100 * hisDirection1[0]; // his 1st x
-        futureVariables[2][1]  = variables[2][1] + variables[2][3] + 100 * hisDirection1[1]; // his 2nd y
-        futureVariables[3][0]  = variables[3][0] + variables[3][2] + 100 * hisDirection2[0]; // his 1st x
-        futureVariables[3][1]  = variables[3][1] + variables[3][3] + 100 * hisDirection2[1]; // his 2nd y
+    private static void initializeRace() {
+        my1 = new Pod("my1");
+        my2 = new Pod("my2");
+        his1 = new Pod("his1");
+        his2 = new Pod("his2");
+        pods = new Pod[]{my1, my2, his1, his2};
     }
 
     private static void updateOpponentsProgress() {
         firstCpReached = cp2go[leaderIdx].length() < checkpointCount * laps;
         for (int i = 0; i < 4; i++) {
-            if ((int) variables[i][5] != Integer.parseInt(Character.toString(cp2go[i].charAt(0)))) {
+            if (pods[i].state.nextCpIdx != Integer.parseInt(Character.toString(cp2go[i].charAt(0)))) {
                 cp2go[i] = cp2go[i].substring(1);
             }
             System.err.println("cp2go[" + i + "]: " + cp2go[i]);
@@ -81,11 +134,11 @@ class Player {
             opponentSecondCpIdx = opponentCpIdx;
         }
 
-        pushCourse[0] = (checkPoints[opponentCpIdx][0] + (int) ((futureVariables[leaderIdx][0] - checkPoints[opponentCpIdx][0]) / Math.PI));
-        pushCourse[1] = (checkPoints[opponentCpIdx][1] + (int) ((futureVariables[leaderIdx][1] - checkPoints[opponentCpIdx][1]) / Math.PI));
+        pushCourse[0] = (checkPoints[opponentCpIdx][0] + (int) ((pods[leaderIdx].stateFuture.xy[0] - checkPoints[opponentCpIdx][0]) / Math.PI));
+        pushCourse[1] = (checkPoints[opponentCpIdx][1] + (int) ((pods[leaderIdx].stateFuture.xy[1] - checkPoints[opponentCpIdx][1]) / Math.PI));
 
-        crashCourse[0] = (int) (futureVariables[leaderIdx][0] + ((checkPoints[opponentCpIdx][0] - futureVariables[leaderIdx][0]) / 2));
-        crashCourse[1] = (int) (futureVariables[leaderIdx][1] + ((checkPoints[opponentCpIdx][1] - futureVariables[leaderIdx][1]) / 2));
+        crashCourse[0] = (int) (pods[leaderIdx].stateFuture.xy[0] + ((checkPoints[opponentCpIdx][0] - pods[leaderIdx].stateFuture.xy[0]) / Math.PI));
+        crashCourse[1] = (int) (pods[leaderIdx].stateFuture.xy[1] + ((checkPoints[opponentCpIdx][1] - pods[leaderIdx].stateFuture.xy[1]) / Math.PI));
 
         nextButOneCp[0] = checkPoints[opponentSecondCpIdx][0];
         nextButOneCp[1] = checkPoints[opponentSecondCpIdx][1];
@@ -95,22 +148,17 @@ class Player {
         if (!firstCpReached) { // until opponent reaches the first CP, head to the 2nd CP
             System.out.println(checkPoints[2][0] + " " + checkPoints[2][1] + " 42");
         } else {
-            String thrust = " 100";
-            if (intercourse(0)) {
-                thrust = " SHIELD";
-            }
-
             System.err.println();
             System.err.println("opponentCpIdx: " + opponentCpIdx);
             System.err.println("leaderIdx: " + (leaderIdx - 1));
 
 
             int[] dirToCp = new int[2];
-            dirToCp[0] = (int) (checkPoints[opponentCpIdx][0] - pastVariables[0][0]);
-            dirToCp[1] = (int) (checkPoints[opponentCpIdx][1] - pastVariables[0][1]);
+            dirToCp[0] = checkPoints[opponentCpIdx][0] - my1.stateFormer.xy[0];
+            dirToCp[1] = checkPoints[opponentCpIdx][1] - my1.stateFormer.xy[1];
             int[] dirToLeader = new int[2];
-            dirToLeader[0] = (int) (variables[leaderIdx][0] - pastVariables[0][0]);
-            dirToLeader[1] = (int) (variables[leaderIdx][1] - pastVariables[0][1]);
+            dirToLeader[0] = pods[leaderIdx].stateFuture.xy[0] - my1.stateFormer.xy[0];
+            dirToLeader[1] = pods[leaderIdx].stateFuture.xy[1] - my1.stateFormer.xy[1];
 
             System.err.println("dirToCp[0]: " + dirToCp[0]);
             System.err.println("dirToCp[1]: " + dirToCp[1]);
@@ -118,25 +166,30 @@ class Player {
             System.err.println("dirToLeader[1]: " + dirToLeader[1]);
             System.err.println();
 
-            double alpha = angleDifference(vector2angle(dirToCp), vector2angle(dirToLeader));
+            double alpha = angleDifference(vector2angle(dirToCp), vector2angle(dirToLeader)); // difference between my directions to the enemy and his CP
+            double beta = angleDifference(my1.state.angle, vector2angle(dirToLeader)); // difference between orientation and direction to enemy
 
             // TODO: could hisDistanceToCp be used to improve attack?
             double hisDistanceToCp = distance(checkPoints[opponentCpIdx][0], checkPoints[opponentCpIdx][1],
-                                              futureVariables[leaderIdx][0], futureVariables[leaderIdx][1]);
-            double myDistanceToHim = distance(futureVariables[leaderIdx][0], futureVariables[leaderIdx][1],
-                                              variables[0][0], variables[0][1]);
-            double myDistanceToHisCp = distance(variables[0][0], variables[0][1],
-                                                checkPoints[opponentCpIdx][0], checkPoints[opponentCpIdx][1]);
+                    pods[leaderIdx].stateFuture.xy[0], pods[leaderIdx].stateFuture.xy[1]);
+            double myDistanceToHim = distance(pods[leaderIdx].stateFuture.xy[0], pods[leaderIdx].stateFuture.xy[1],
+                    my1.state.xy[0], my1.state.xy[1]);
+            double myDistanceToHisCp = distance(my1.state.xy[0], my1.state.xy[1],
+                    checkPoints[opponentCpIdx][0], checkPoints[opponentCpIdx][1]);
 
             System.err.println("myDistanceToHisCp: " + myDistanceToHisCp);
             System.err.println("myDistanceToHim: " + myDistanceToHim);
             System.err.println();
 
+            String thrust = " 100";
             int x;
             int y;
-            if (alpha > 60) {
-                x = pushCourse[0];
-                y = pushCourse[1];
+            if (alpha > 90) {
+                x = crashCourse[0];
+                y = crashCourse[1];
+                if (beta > 45 && myDistanceToHim > 2000) {
+                    thrust = " 15";
+                }
             } else if (alpha > 30) {
                 x = pushCourse[0];
                 y = pushCourse[1];
@@ -150,61 +203,59 @@ class Player {
                     y = crashCourse[1];
                 }
             }
-            String msg = " alpha:" + (int) alpha + ", x: " + x + ", y: " + y + ", thrust: " + thrust;
+            if (intercourse(0)) {
+                thrust = " SHIELD";
+            }
+            String msg = " alpha:" + (int) alpha + " beta:" + (int) beta + ", x: " + x + ", y: " + y + ", thrust: " + thrust;
             System.out.println(x + " " + y + thrust + msg);
         }
     }
 
     private static void outputForPod2() {
-        System.err.println("nextCheckPointIdMy2: " + variables[1][5]);
-        int xNextCp2 = apexForPod2[0];
-        int yNextCp2 = apexForPod2[1];
+        System.err.println("nextCheckPointIdMy2: " + my2.state.nextCpIdx);
+        int xNextCp2 = my2.state.apex[0];
+        int yNextCp2 = my2.state.apex[1];
         System.err.println("xNextCheckPointMy2: " + xNextCp2);
         System.err.println("yNextCheckPointMy2: " + yNextCp2);
 
         int[] directionToCp2 = new int [2];
-        directionToCp2[0] = (int) (xNextCp2 - variables[1][0]);
-        directionToCp2[1] = (int) (yNextCp2 - variables[1][1]);
+        directionToCp2[0] = xNextCp2 - my2.state.xy[0];
+        directionToCp2[1] = yNextCp2 - my2.state.xy[1];
         double angleToCp2 = vector2angle(directionToCp2);
-        System.err.println("2nd pod oriented: " + variables[1][4]);
+        System.err.println("2nd pod oriented: " + my2.state.angle);
         System.err.println("2nd pod to CP: " + (int) angleToCp2);
-        double formerDistToCP2 = distance(pastVariables[1][0], pastVariables[1][1], xNextCp2, yNextCp2);
-        int nextCheckpointDist2 = (int) distance(variables[1][0], variables[1][1], xNextCp2, yNextCp2);
-        double xCorrection2 = (pastVariables[1][0] != 0) ? (variables[1][0] - pastVariables[1][0]) : 0;
+        double formerDistToCP2 = distance(my2.stateFormer.xy[0], my2.stateFormer.xy[1], xNextCp2, yNextCp2);
+        int nextCheckpointDist2 = (int) distance(my2.state.xy[0], my2.state.xy[1], xNextCp2, yNextCp2);
+        double xCorrection2 = (my2.stateFormer.xy[0] != 0) ? (my2.state.xy[0] - my2.stateFormer.xy[0]) : 0;
         System.err.println("xCorrection2: " + xCorrection2);
-        double yCorrection2 = (pastVariables[1][1] != 0) ? (variables[1][1] - pastVariables[1][1]) : 0;
+        double yCorrection2 = (my2.stateFormer.xy[1] != 0) ? (my2.state.xy[1] - my2.stateFormer.xy[1]) : 0;
         System.err.println("yCorrection2: " + yCorrection2);
         double xCorrectedGoal2 = xNextCp2 - xCorrection2;
         System.err.println("xCorrectedGoal2: " + xCorrectedGoal2);
         double yCorrectedGoal2 = yNextCp2 - yCorrection2;
         System.err.println("yCorrectedGoal2: " + yCorrectedGoal2);
 
-        String thrust2 = getThrust(nextCheckpointDist2, angleDifference(variables[1][4], angleToCp2), formerDistToCP2, 1);
+        String thrust2 = getThrust(nextCheckpointDist2, angleDifference(my2.state.angle, angleToCp2), formerDistToCP2, 1, my2.state.nextCpIdx);
         System.err.println("thrust2: " + thrust2);
         System.out.println((int) xCorrectedGoal2 + " " + (int) yCorrectedGoal2 + " " + thrust2);
     }
 
-    private static void updatePastVariables() {
-        pastVariables = variables;
+    private static void updateFormerVariables() {
+        for (Pod pod : pods) {
+            pod.updateFormerState(pod.state);
+        }
     }
 
     private static void readInitialInputs(Scanner in) {
         laps = in.nextInt();
         checkpointCount = in.nextInt();
         checkPoints = new int[checkpointCount][2];
-        apexForPod1 = new int[2];
-        apexForPod2 = new int[2];
-        variables = new double[4][6];
-        pastVariables = new double[4][6];
-        futureVariables = new double[4][2];
         for (int i = 0; i < checkpointCount; i++) {
             checkPoints[i][0] = in.nextInt();
             checkPoints[i][1] = in.nextInt();
             System.err.println("checkPoint[" + i + "]: " +
                     "(" + checkPoints[i][0] + ", " + checkPoints[i][1] + ")");
         }
-        apexForPod1 = computeApex(checkPoints[checkpointCount - 1][0], checkPoints[checkpointCount - 1][1], 0);
-        apexForPod2 = computeApex(checkPoints[checkpointCount - 1][0], checkPoints[checkpointCount - 1][1], 0);
         cp2go = cp2go();
         leaderIdx = 2;
         pushCourse = new int[2];
@@ -212,7 +263,29 @@ class Player {
         nextButOneCp = new int[2];
         pushCourse[0] = checkPoints[2][0];
         pushCourse[1] = checkPoints[2][1];
+        findFurthestCp();
+
         System.err.println();
+    }
+
+    private static void findFurthestCp() {
+        int[] intervalsLength = new int[checkpointCount];
+        intervalsLength[0] = (int) distance(checkPoints[checkpointCount - 1][0], checkPoints[checkpointCount - 1][1], checkPoints[0][0], checkPoints[0][1]);
+        System.err.println("intervalsLength[0]: " + intervalsLength[0]);
+        for (int i = 1; i < checkpointCount; i++) {
+            intervalsLength[i] = (int) distance(checkPoints[i - 1][0], checkPoints[i - 1][1], checkPoints[i][0], checkPoints[i][1]);
+            System.err.println("intervalsLength[" + i + "]: " + intervalsLength[i]);
+        }
+        int maxIdx = 0;
+        int maxDist = 0;
+        for (int i = 0; i < checkpointCount; i++) {
+            if (intervalsLength[i] > maxDist) {
+                maxIdx = i;
+                maxDist = intervalsLength[i];
+            }
+        }
+        furthestCpId = maxIdx;
+        System.err.println("furthestCpId: " + furthestCpId);
     }
 
     public static String[] cp2go() {
@@ -281,36 +354,11 @@ class Player {
     }
 
     private static void readInputs(Scanner in) {
-        // [my1, my2, his1, his2][0:x, 1:y, 2:vx, 3:vy, 4:angle, 5:nextCpId, 6:pastX, 7:pastY]
-        variables[0][0] = in.nextInt();     // x position of your pod
-        variables[0][1] = in.nextInt();     // y position of your pod
-        variables[0][2] = in.nextInt();     // x speed of your pod
-        variables[0][3] = in.nextInt();     // y speed of your pod
-        variables[0][4] = in.nextInt();     // angle of your pod
-        variables[0][5] = in.nextInt();     // next check point id of your pod
-
-        variables[1][0] = in.nextInt();     // x position of your pod
-        variables[1][1] = in.nextInt();     // y position of your pod
-        variables[1][2] = in.nextInt();     // x speed of your pod
-        variables[1][3] = in.nextInt();     // y speed of your pod
-        variables[1][4] = in.nextInt();     // angle of your pod
-        variables[1][5] = in.nextInt();     // next check point id of your pod
-
-        variables[2][0] = in.nextInt();     // x position of the opponent's pod
-        variables[2][1] = in.nextInt();     // y position of the opponent's pod
-        variables[2][2] = in.nextInt();     // x speed of the opponent's pod
-        variables[2][3] = in.nextInt();     // y speed of the opponent's pod
-        variables[2][4] = in.nextInt();     // angle of the opponent's pod
-        variables[2][5] = in.nextInt();     // next check point id of the opponent's pod
-
-        variables[3][0] = in.nextInt();     // x position of the opponent's 2nd pod
-        variables[3][1] = in.nextInt();     // y position of the opponent's 2nd pod
-        variables[3][2] = in.nextInt();     // x speed of the opponent's 2nd pod
-        variables[3][3] = in.nextInt();     // y speed of the opponent's 2nd pod
-        variables[3][4] = in.nextInt();     // angle of the opponent's 2nd pod
-        variables[3][5] = in.nextInt();     // next check point id of the opponent's 2nd pod
+        my1.updateState(in);
+        my2.updateState(in);
+        his1.updateState(in);
+        his2.updateState(in);
     }
-
 
     public static double distance(double aX, double aY, double bX, double bY) {
         double verticalDistance = Math.abs(bY - aY);
@@ -348,49 +396,63 @@ class Player {
         return 180 - Math.abs(Math.abs(a - b) - 180);
     }
 
-    public static String getThrust(double nextCheckpointDist, double nextCheckpointAngle, double formerGoalDist, int podIdx) {
-        String thrust = "BOOST";
+    public static String getThrust(double nextCheckpointDist, double nextCheckpointAngle, double formerGoalDist, int podIdx, int cPiD) {
+        int gas = 100;
         System.err.println("nextCheckpointDist: " + nextCheckpointDist);
         System.err.println("angle difference: " + (int) nextCheckpointAngle);
         System.err.println("formerGoalDist: " + (int) formerGoalDist);
         if (Math.abs(nextCheckpointAngle) > 90 && // wrong direction & moving
-                variables[podIdx][2] != 0 && variables[podIdx][3] != 0) {
+                pods[podIdx].state.v[0] != 0 && pods[podIdx].state.v[1] != 0) {
             return "0";
         }
 
         if (formerGoalDist > nextCheckpointDist &&      // getting closer to CP
                 nextCheckpointDist < 3500) {
-            return "80";
+            gas -= 11;
         }
 
         if (formerGoalDist > nextCheckpointDist &&      // getting even more close
                 nextCheckpointDist < 2500) {
-            return "40";
+            gas -= 11;
         }
 
-        if (nextCheckpointDist < 2500 &&                // CP is close
-                Math.abs(nextCheckpointAngle) > 33) {   // CP is not straight ahead
-            return "20";
+        if (Math.abs(nextCheckpointAngle) > 35 ) {      // CP is not straight ahead
+            gas -= 23;
         }
 
-        if (Math.abs(nextCheckpointAngle) > 60 &&       // CP is not ahead
-                nextCheckpointDist < 5000) {            // CP is not far
-            thrust = "65";
+        if (Math.abs(nextCheckpointAngle) > 65 ) {      // CP is not straight ahead
+            gas -= 25;
         }
 
-        if (intercourse(podIdx)) {
+        if (nextCheckpointDist < 5000) {                // CP is not far
+            gas -= 2;
+        }
+
+        if (nextCheckpointDist < 3000) {                // CP is not far
+            gas -= 10;
+        }
+
+        String thrust = "" + gas;
+
+        if (firstCpReached && intercourse(podIdx)) {
             thrust = "SHIELD";
+        }
+
+        if (cPiD == furthestCpId && nextCheckpointAngle < 30) {
+            thrust = "BOOST";
         }
 
         return thrust;
     }
 
     private static boolean intercourse(int podIdx) {
-        if (distance(futureVariables[podIdx][0], futureVariables[podIdx][1], futureVariables[2][0], futureVariables[2][1]) < 800) {
+        if (distance(pods[podIdx].stateFuture.xy[0], pods[podIdx].stateFuture.xy[1],
+                     pods[2].stateFuture.xy[0], pods[2].stateFuture.xy[1]) < 1000) {
             System.err.println("Collision of pods my#" + (podIdx + 1) + " and his#1 predicted!");
             return true;
         }
-        if (distance(futureVariables[podIdx][0], futureVariables[podIdx][1], futureVariables[3][0], futureVariables[3][1]) < 800) {
+        if (distance(pods[podIdx].stateFuture.xy[0], pods[podIdx].stateFuture.xy[1],
+                     pods[3].stateFuture.xy[0], pods[3].stateFuture.xy[1]) < 1000) {
             System.err.println("Collision of pods my#" + (podIdx + 1) + " and his#2 predicted!");
             return true;
         }
